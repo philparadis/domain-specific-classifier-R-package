@@ -1,0 +1,11 @@
+Task 3: Complex Disease Diagnosis
+
+This dataset is a collection of clinical data on Bowel, Eye, Heart, Liver and Lung diseases.  Correspondingly, we have five datasets describing symptoms, background characteristics and disease situations of patients. The objective of this task is to predict the type of disease for each testing instance. Each training data gives a numerical matrix with the last column as the type of disease (i.e., the class label). In the example of heart diseases (see file HeartTrain.csv), label 1 represents Atherosclerotic, and label 0 means native coronary artery. 
+
+The statistical information of the dataset is summarized as,
+Subset	N. of Class	N. of Feature	N. of Train	N. of Test
+Bowel	4		13		35		15
+Eye	3		9		34		16	
+Heart 	2		12		34		16
+Liver	6		12		34		16
+Lung	4		11		35		15

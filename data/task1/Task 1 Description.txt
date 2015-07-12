@@ -1,0 +1,11 @@
+Task 1: e-News2015 categorization
+
+This e-News2015 dataset is collected from eight newspapers: The New Zealand Herald (www.nzherald.co.nz), The Australian (www.theaustralian.com.au), The Press (www.stuff.co.nz), Yahoo News (news.yahoo.com), BBC (www.bbc.co.uk), The New York Times (www.nytimes.com), The Independent (www.independent.co.uk), The Times (www.timesonline.co.uk) and Herald Sun (www.heraldsun.com.au/), on five topics of business, entertainment, sport, technology, and travel respectively. Each document of the dataset is labelled manually by skimming over the text and determining the category. In the provided data files, each document is formatted as one line pure text with the first character as the class label (for training data), punctuations and stop words removed in advance. 
+
+The statistical information of the training dataset is summarized as,
+Topic		N. of Documents		
+Business	 256
+Entertainment	 266
+Sport	 	 263
+Technology	 281
+Travel	 	 273

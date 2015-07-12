@@ -1,0 +1,8 @@
+Task 2: Trademe Comments Sentiment Classification
+
+The data was collected from TradeMe (www.trademe.co.nz), a New Zealand famous online shopping website. Comments from seller and buyer were collected in pure text, and feature was extracted by counting the number of occurrence for 25 key words. The goal of this task is to classify these comments into three sentiment categories (Positive, Negative and Neutral). The training dataset given is a matrix in 26 columns. The last column is the class label identified as an integer in the range of 1-6: Buyer Positive (1), Buyer Neutral (2), Buyer Negative (3), Seller Positive (4), Seller Neutral (5), and Seller Negative (6). Note this task contains two three-class classification problems, transfer learning is encouraged to be used for accuracy enhancement. 
+
+The statistical information of the training data is summarized as,
+Comments from 	N. of Positive 	N. of Neutral	N. of Negative
+Buyer		27739		2671		4291
+Seller		22191		3745		3442
