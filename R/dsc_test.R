@@ -130,6 +130,9 @@ newDoc.test2 <- tail(dsc.build.docs.df(c(df.test2$text, sentence)), 1)
 rel.freq.vec <- dsc.compute.total.rel.freq.vec(CS.test2,
                                                df.test2$class,
                                                newDoc.test2)
+rel.freq.matrix <- dsc.compute.total.rel.freq.matrix(CS.test2,
+                                                     df.test2$class,
+                                                     newDoc.test2)
 # Given a new document d, as above, i.e.:
 #
 #     bat black blue cat dog green one pig red three two white
@@ -148,6 +151,7 @@ rel.freq.vec.expected <- c(animal=5/18, color=9/18, number=4/18)
 ### UNIT TEST: dsc.compute.total.rel.freq
 test_that("Testing dsc.compute.total.rel.freq", {
   expect_equal(rel.freq.vec, rel.freq.vec.expected)
+  expect_equal(rel.freq.matrix[1,], rel.freq.vec.expected)
 })
 
 # Next, compute |CS_j|, i.e. the number of domain-specific words
