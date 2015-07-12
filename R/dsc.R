@@ -53,7 +53,7 @@ dsc.build.avg.prop.matrix <- function(docs, labels)
   #   A
  
   # Compute length (i.e. total num. of words) |d_i| of each document d_i
-  docs.length <- apply(docs, 1, sum)
+  docs.length <- row_sums(docs)
   
   # Normalize the word counts to word frequencies by dividing each row by the
   # number of words in that row
@@ -125,7 +125,8 @@ dsc.compute.total.rel.freq.vec <- function(CS, labels, newdoc)
   newdoc.length <- sum(newdoc)
   wCS <- c()
   for (j in 1:nlevels(factor(labels))) {
-    newfreq <- (1 / newdoc.length) * sum(CS[j, ] * newdoc)
+    CS.j <- CS[j, ] * 1
+    newfreq <- (1 / newdoc.length) * sum(CS.j * newdoc)
     wCS <- c(wCS, newfreq)
   }
   names(wCS) <- rownames(CS)
@@ -135,10 +136,14 @@ dsc.compute.total.rel.freq.vec <- function(CS, labels, newdoc)
 dsc.compute.total.rel.freq.matrix <- function(CS, labels, newdocs)
 {
   newdocs.lengths <- row_sums(newdocs)
+  n.newdata <- nrow(newdocs)
   wCS.matrix <- c()
   for (j in 1:nlevels(factor(labels))) {
-    newfreqs <- (1 / newdocs.lengths) * col_sums(apply(newdocs, 1,
-                                                       function(row) { row * CS[j, ] }))
+    CS.j  <- CS[j, ] * 1
+    #newfreqs <- (1 / newdocs.lengths) * col_sums(apply(newdocs, 1, function(row) { row * CS.j }))
+    #newfreqs <- (1 / newdocs.lengths) * row_sums(newdocs * matrix(rep(CS.j, n.newdata),
+    #                                                              n.newdata, byrow = TRUE))
+    newfreqs <- (1 / newdocs.lengths) * row_sums(sweep(newdocs, MARGIN=2, CS.j, `*`))
     wCS.matrix <- cbind(wCS.matrix, newfreqs)
   }
   colnames(wCS.matrix) <- rownames(CS)
@@ -216,6 +221,14 @@ dsc.default <- function(
     text <- NULL
     DTM <- x
   } else if (inherits(x, "data.frame")) {
+    if (ncol(x) == 1) {
+      text <- x[ , 1]
+      DTM <- NULL
+    } else {
+      text <- NULL
+      DTM <- as.DocumentTermMatrix(newdata, weighting = weightTf)
+    }
+  } else {
     stop("Training dataset 'x' has an unrecognized format.")
   }
   
