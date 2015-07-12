@@ -123,9 +123,8 @@ dsc.compute.total.rel.freq.vec <- function(CS, labels, newdoc)
   # speedup would be negligible anyway).
   
   newdoc.length <- sum(newdoc)
-  levels <- levels(factor(labels))
   wCS <- c()
-  for (j in 1:length(levels)) {
+  for (j in 1:nlevels(factor(labels))) {
     newfreq <- (1 / newdoc.length) * sum(CS[j, ] * newdoc)
     wCS <- c(wCS, newfreq)
   }
@@ -136,14 +135,14 @@ dsc.compute.total.rel.freq.vec <- function(CS, labels, newdoc)
 dsc.compute.total.rel.freq.matrix <- function(CS, labels, newdocs)
 {
   newdocs.lengths <- row_sums(newdocs)
-  levels <- levels(factor(labels))
-  wCS <- c()
-  for (j in 1:length(levels)) {
-    newfreq <- (1 / newdoc.length) * sum(CS[j, ] * newdoc)
-    wCS <- c(wCS, newfreq)
+  wCS.matrix <- c()
+  for (j in 1:nlevels(factor(labels))) {
+    newfreqs <- (1 / newdocs.lengths) * col_sums(apply(newdocs, 1,
+                                                       function(row) { row * CS[j, ] }))
+    wCS.matrix <- cbind(wCS.matrix, newfreqs)
   }
-  names(wCS) <- rownames(CS)
-  wCS
+  colnames(wCS.matrix) <- rownames(CS)
+  wCS.matrix
 }
 
 dsc.compute.CS.lengths.vec <- function(CS)
@@ -153,7 +152,7 @@ dsc.compute.CS.lengths.vec <- function(CS)
   rowSums(CS)
 }
 
-dsc.compute.classification.ratios <- function(CS, labels, newdoc, p)
+dsc.compute.classification.ratios <- function(CS, labels, newdocs, p)
 {
   # For each label j, compute the total relative frequency of domain j-specific
   # words found in 'newdoc'. Denote 'newdoc' by d, the label by j and the set
@@ -169,8 +168,8 @@ dsc.compute.classification.ratios <- function(CS, labels, newdoc, p)
   
   CS.lengths <- dsc.compute.CS.lengths.vec(CS)
   CS.lengths.p <- CS.lengths ^ (1/p)
-  wCS <- dsc.compute.total.rel.freq.vec(CS, labels, newdoc)
-  classification.ratios.vec <- wCS / CS.lengths.p
+  wCS.matrix <- dsc.compute.total.rel.freq.matrix(CS, labels, newdocs)
+  classification.ratios.vec <- wCS.matrix / CS.lengths.p
   classification.ratios.vec
 }
 
@@ -220,7 +219,7 @@ dsc.default <- function(
     stop("Training dataset 'x' has an unrecognized format.")
   }
   
-  if (!is.factor(y)) {
+  if (!is.factor(y))
     y <- factor(y)
 
   # Object of class 'dsc' to return
@@ -261,41 +260,48 @@ predict.dsc <- function(model, newdata, prob = FALSE, ...)
   n.train <- nrow(model$DTM)
   n.words <- ncol(model$DTM)
   
+  # Input 'newdata' can be a character vector, a data.frame
+  # or directly a DocumentTermMatrix.
+  # In either case, we convert it to a DocumentTermMatrix.
   if (inherits(newdata, "character")) {
     n.newdata <- length(newdata)
-    dtm <- dsc.build.DTM(c(model$text, newdata))
-    newdocs <- dtm[(n.train+1):(n.train+n.newdata), ]
-  } else if (inherits(newdata, "DocumentTermMatrix") 
-             || inherits(newdata, "data.frame")) {
+    newdtm <- dsc.build.DTM(c(model$text, newdata))
+    newdocs <- newdtm[(n.train+1):(n.train+n.newdata), ]
+  } else if (inherits(newdata, "DocumentTermMatrix")) {
+    n.newdata <- nrow(newdata)
+    newdocs <- newdata
+  } else if (inherits(newdata, "data.frame")) {
     n.newdata <- nrow(newdata)
     if (ncol(newdata) == 1) {
-      dtm <- dsc.build.DTM(c(model$text, newdata[[1]]))
-      newdocs <- dtm[(n.train+1):(n.train+n.newdata), ]
-    } else if (n.words == ncol(newdata)){
-      newdocs <- newdata
-    } else  {
-      stop(paste0("Number of columns in newdata does not match expected number of words: ", n.words))
+      newdtm <- dsc.build.DTM(c(model$text, newdata[[1]]))
+      newdocs <- newdtm[(n.train+1):(n.train+n.newdata), ]
+    } else {
+      newdocs <- as.DocumentTermMatrix(newdata, weighting = weightTf)
     }
   } else {
-    stop("newdata type is unrecognized")
+    stop("Type of 'newdata' is unrecognized.")
   }
-
-  categories <- factor(levels(factor(model$labels)))
   
-  newdocs.df <- as.data.frame(as.matrix(newdocs))
-  predictions <- c.factor()
-  for (i in 1:nrow(newdocs.df)) {
-    newdoc <- newdocs.df[i, ]
-    rel.freq.vec <- dsc.compute.total.rel.freq.vec(model$CS,
+  # Validate that the DocumentTermMatrix has the same number of terms
+  # that we used in the training set
+  if (n.words != ncol(newdocs)) {
+    stop(paste0("Number of terms in 'newdata' is ", ncol(newdocs)," and does ",
+                "not match the number of terms in the training set corpus (",
+                n.words, " words).\n"))
+  }
+  
+  predictions <- dsc.compute.classification.ratios(model$CS,
                                                    model$labels,
-                                                   newdoc)
-    ratios <- dsc.compute.classification.ratios(model$CS, model$labels,
-                                               newdoc, p = model$p)
-    if (prob == TRUE) {
-      predictions <- c(predictions, ratios)
-    } else {
-      predictions <- c(predictions, categories[which.max(ratios)])
-    }
+                                                   newdocs,
+                                                   p = model$p)
+  if (prob == FALSE) {
+    # User doesn't want probabilities... Simply compute argmax and return
+    # most likely category
+    categories <- factor(levels(factor(model$labels)))
+    predictions <- c(apply(predictions, 1, function(row) { categories[which.max(row)] }))
+  } else {
+    # Scale each row so that it sums to 1
+    predictions <- t(apply(predictions, 1, function(row) { row <- row / sum(row) }))
   }
   predictions
 }
@@ -363,3 +369,5 @@ print.summary.dsc <- function(x, ...)
 #   class(ret) <- c("scnn.formula", class(ret))
 #   return (ret)
 # }
+
+
