@@ -59,6 +59,7 @@ df.test2 <- data.frame(text=c("one black dog two white cat pig black bat bat",
                                       "color", "color", "color",
                                       "number", "number")),
                        stringsAsFactors = FALSE)
+categories.test2 <- factor(levels(df.test2$class))
 
 DTM.test1 <- dsc.build.DTM(df.test1$text)
 docs.test1 <- dsc.build.docs.df(df.test1$text)
@@ -66,21 +67,23 @@ apm.test1 <- dsc.build.avg.prop.matrix(DTM.test1, df.test1$class)
 alpha.matrix.test1 <- dsc.build.alpha.sums.matrix(apm.test1, df.test1$class, alpha = 1.0)
 CS.test1 <- dsc.build.CS.matrix(apm.test1, alpha.matrix.test1)
 
-# UNIT TESTS: Build DTM and convert it to data.frame
+### UNIT TESTS: dsc.build.DTM, dsc.build.docs.df
 test_that("Testing dsc.build.DTM and dsc.build.docs.df functions", {
   expect_equivalent(as.data.frame(as.matrix(DTM.test1)),
                     data.frame(aaa=c(4,3,2,1), bbb=c(0,1,2,2), ccc=c(0,0,0,2)))
   expect_equivalent(docs.test1,
                     data.frame(aaa=c(4,3,2,1), bbb=c(0,1,2,2), ccc=c(0,0,0,2)))
-  expect_equal(apm.test1
+  # TODO: Add tests for apm.test1, alpha.matrix.test1 and CS.test1 ?
 })
+
+### UNIT TESTS: dsc.build.avg.prop.matrix
 test_that("Testing dsc.build.avg.prop.matrix function", {
   expect_equal(apm.test1,
                matrix(c(0.875, 0.35, 0.125, 0.450, 0, 0.2), 2,
                       dimnames=list(c("0","1"), c("aaa","bbb","ccc"))))
 })
 
-# UNIT TESTS:
+# Series of unit tests:
 #  - Build documents bag-of-word
 #  - Build avg. prop. matrix
 #  - Build alpha sums matrix
@@ -88,6 +91,7 @@ test_that("Testing dsc.build.avg.prop.matrix function", {
 #  - Check return type at each step
 #  - Check correctness of domain-specific words matrix
 docs.test2 <- dsc.build.docs.df(df.test2$text)
+DTM.test2 <- dsc.build.DTM(df.test2$text)
 apm.test2 <- dsc.build.avg.prop.matrix(docs.test2, df.test2$class)
 alpha.matrix.test2 <- dsc.build.alpha.sums.matrix(apm.test2, df.test2$class, alpha = 1.0)
 CS.test2 <- dsc.build.CS.matrix(apm.test2, alpha.matrix.test2)
@@ -100,8 +104,10 @@ CS.expected <- data.frame(bat=c(TRUE,FALSE,FALSE), black=c(FALSE,TRUE,FALSE),
 row.names(CS.expected) <- c("animal","color","number")
 CS.expected <- as.matrix(CS.expected)
 
+### UNIT TESTS: Return types
 test_that("Testing the class types returned by various dsc helper functions", {
   expect_is(docs.test2, "data.frame")
+  expect_is(DTM.test2, "DocumentTermMatrix")
   expect_is(apm.test2, "matrix")
   expect_is(alpha.matrix.test2, "matrix")
   expect_is(CS.test2, "matrix")
@@ -110,7 +116,7 @@ test_that("Testing dsc.build.CS.matrix function", {
   expect_equal(CS.test2, CS.expected)
 })
 
-# UNIT TEST: Classification
+### Classification
 sentence <- paste("red cat red dog red bat two",
                   "red pig one two three black",
                   "green blue black black bat")
@@ -136,7 +142,10 @@ rel.freq.vec <- dsc.compute.total.rel.freq.vec(CS.test2,
 # w[CS_animal] = (1/18) * [2 + 1 + 1 + 1]     = 5/18
 # w[CS_color]  = (1/18) * [3 + 1 + 1 + 4 + 0] = 9/18
 # w[CS_number] = (1/18) * [1 + 1 + 2]         = 4/18
+
 rel.freq.vec.expected <- c(animal=5/18, color=9/18, number=4/18)
+
+### UNIT TEST: dsc.compute.total.rel.freq
 test_that("Testing dsc.compute.total.rel.freq", {
   expect_equal(rel.freq.vec, rel.freq.vec.expected)
 })
@@ -150,6 +159,8 @@ test_that("Testing dsc.compute.total.rel.freq", {
 # |CS_number| = |{one, two, three}| = 3
 CS.lengths.test2 <- dsc.compute.CS.lengths.vec(CS.test2)
 CS.lengths.expected <- c(animal=4, color=5, number=3)
+
+### UNIT TEST: dsc.compute.CS.lengths.vec
 test_that("Testing dsc.compute.CS.lengths.vec", {
   expect_equal(CS.lengths.test2,
                CS.lengths.expected)
@@ -175,27 +186,48 @@ test_that("Testing dsc.compute.CS.lengths.vec", {
 #   j=color,  ratio = (9/18) / 1 = 1/2
 #   j=number, ratio = (4/18) / 1 = 2/9
 
-test_that("Testing dsc.compute.CS.lengths.vec", {
+### UNIT TESTS: dsc.compute.classification.ratios
+test_that("Testing dsc.compute.classification.ratios", {
   expect_equal(dsc.compute.classification.ratios(CS.test2, df.test2$class,
                                                  newDoc.test2, p = 1),
-               c(animal=5/72, color=1/10, number=2/27))
+               matrix(c(5/72, 1/10, 2/27), 1, 3,
+                      dimnames=list(9, c("animal", "color", "number"))))
   expect_equal(dsc.compute.classification.ratios(CS.test2, df.test2$class,
                                                  newDoc.test2, p = 2),
-               c(animal=5/36, color=(9/18)/5^0.5, number=(4/18)/3^0.5))
+               matrix(c(5/36, (9/18)/5^0.5, (4/18)/3^0.5), 1, 3,
+                      dimnames=list(9, c("animal", "color", "number"))))
   expect_equal(dsc.compute.classification.ratios(CS.test2, df.test2$class,
                                                  newDoc.test2, p = Inf),
-               c(animal=5/18, color=1/2, number=2/9))
+               matrix(c(5/18, 1/2, 2/9), 1, 3,
+                      dimnames=list(9, c("animal", "color", "number"))))
 })
 
-# UNIT TESTS: dsc function
-model.test2 <- dsc(df.test2$text, df.test2$class, alpha = 1.0, p = 1.0)
+# UNIT TESTS: dsc
+model.test2 <- dsc(df.test2$text, df.test2$class, alpha = 1.0, p = 2)
 test_that("Testing dsc", {
   expect_equal(model.test2$alpha, 1.0)
-  expect_equal(model.test2$p, 1.0)
+  expect_equal(model.test2$p, 2)
   expect_equal(model.test2$CS, CS.expected)
 })
 
-# UNIT TESTS: predict
+### Predicting new data with 'predict.dsc'
+### Predicting a single document at a time
+test_that("Testing predict.dsc on single documents", {
+  expect_equivalent(predict(model.test2, "red"),
+                    categories.test2[which(categories.test2 == "color")])
+  expect_equivalent(predict(model.test2, "pig"),
+                    categories.test2[which(categories.test2 == "animal")])
+  expect_equivalent(predict(model.test2, "one"),
+                    categories.test2[which(categories.test2 == "number")])
+  expect_equivalent(predict(model.test2, "dog pig red white one two three one two three"),
+                    categories.test2[which(categories.test2 == "number")])
+  expect_equivalent(predict(model.test2, "dog dog cat cat pig pig bat bat one two white blue red"),
+                    categories.test2[which(categories.test2 == "animal")])
+  expect_equivalent(predict(model.test2, "white pig two black red blue"),
+                    categories.test2[which(categories.test2 == "color")])
+})
+
+### Predicting multiple new documents at a time
 newDocs.df.test2 <- data.frame(text=c("bat bat dog cat white",
                                       "cat cat cat red pig",
                                       "green dog dog dog dog two",
@@ -208,13 +240,21 @@ newDocs.df.test2 <- data.frame(text=c("bat bat dog cat white",
                                              "color", "color", "color",
                                              "number", "number")),
                               stringsAsFactors = FALSE)
-newDocs.DTM.test2 <- dsc.build.DTM(c(df.test2$text, newDocs.df.test2$text))
-newDocs.DTM.test2 <- newDocs.DTM.test2[(nrow(df.test2)+1):(nrow(df.test2)+nrow(newDocs.df.test2)), ]
 
-pred.test2 <- predict(model.test2, newDocs.DTM.test2)
-test_that("Testing predict.dsc", {
-  expect_equivalent(pred.test2, newDocs.df.test2$class)
+### UNIT TESTS: predict.dsc
+test_that("Testing predict.dsc on multiple documents", {
+  expect_equal(predict(model.test2, newDocs.df.test2$text),
+               newDocs.df.test2$class)
+  expect_equal(predict(model.test2, newDocs.df.test2[, "text", drop=FALSE]),
+               newDocs.df.test2$class)
+  newDocs.DTM.test2 <- dsc.build.DTM(c(df.test2$text, newDocs.df.test2$text))
+  newDocs.DTM.test2 <- newDocs.DTM.test2[(nrow(df.test2)+1):(nrow(df.test2)+nrow(newDocs.df.test2)), ]
+  expect_equal(predict(model.test2, newDocs.DTM.test2),
+               newDocs.df.test2$class)
+  expect_equal(predict(model.test2, as.data.frame(as.matrix(newDocs.DTM.test2))),
+               newDocs.df.test2$class)
 })
+
 
 # TESTING FOR:
 #   - Typical coding errors
@@ -226,17 +266,14 @@ sentence2 <- "Tell me -- quickly! -- what is the password!?!?"
 newDoc.test3 <- tail(dsc.build.docs.df(c(df.test2$text, sentence1)), 1)
 newDoc.test4 <- tail(dsc.build.docs.df(c(df.test2$text, sentence2)), 1)
 
-# Print summary of labels for training and testing datasets
-table(docs.unittest$class)
-
 # Split into train and test (70% for training)
-library(caTools)
-split <- sample.split(docs.enews15$class, SplitRatio=0.7)
-train1 <- subset(docs.enews15, split==TRUE)
-test1 <- subset(docs.enews15, split==FALSE)
-
-table(train1$class)
-table(test1$class)
+# library(caTools)
+# split <- sample.split(docs.enews15$class, SplitRatio=0.7)
+# train1 <- subset(docs.enews15, split==TRUE)
+# test1 <- subset(docs.enews15, split==FALSE)
+# 
+# table(train1$class)
+# table(test1$class)
 
 
 # TESTING DATA
