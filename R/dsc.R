@@ -1,10 +1,14 @@
 # Description:
 # 
-# Implementation of the Domain-Specific Classifier (DNC). WORK IN PROGRESS.
+# Implementation of the Domain-Specific Classifier (DNC), a fast algorithm for
+# text categorization, developed in 2012 by Duan, Pestov and Singla. This
+# implementation is entirely based on [1].
 #
-# Date: 8 July 2015
+# Date: 12 July 2015
 #
 # Author: Philippe Paradis
+#
+# Version: 0.1
 #
 # References:
 #
@@ -14,7 +18,7 @@
 library(tm)
 library(slam)
 
-# HELPER FUNCTIONS
+### HELPER FUNCTIONS
 
 dsc.build.DTM <- function(texts)
 {
@@ -184,6 +188,8 @@ dsc.new.document <- function(newdoc)
   num.words <- sum(newdoc)
 }
 
+### Model training
+
 dsc <- function(x, ...)
   UseMethod("dsc")
 
@@ -255,6 +261,8 @@ dsc.default <- function(
   class(my.model) <- "dsc"
   return(my.model)
 }
+
+### Prediction
 
 # c method for factors
 c.factor <-  function(...)
@@ -341,46 +349,4 @@ print.summary.dsc <- function(x, ...)
   print.dsc(x)
   # TODO: ...
 }
-
-# dsc.formula <- function (formula,
-#                          data = NULL,
-#                          ...,
-#                          subset,
-#                          na.action = na.omit)
-# {
-#   call <- match.call()
-#   if (!inherits(formula, "formula"))
-#     stop("method is only for formula objects")
-#   m <- match.call(expand.dots = FALSE)
-#   if (identical(class(eval.parent(m$data)), "matrix"))
-#     m$data <- as.data.frame(eval.parent(m$data))
-#   m$... <- NULL
-#   m[[1]] <- as.name("model.frame")
-#   m$na.action <- na.action
-#   m <- eval(m, parent.frame())
-#   Terms <- attr(m, "terms")
-#   attr(Terms, "intercept") <- 0
-#   x <- model.matrix(Terms, m)
-#   y <- model.extract(m, "response")
-#   attr(x, "na.action") <- attr(y, "na.action") <- attr(m, "na.action")
-#   if (length(scale) == 1)
-#     scale <- rep(scale, ncol(x))
-#   if (any(scale)) {
-#     remove <- unique(c(which(labels(Terms) %in%
-#                                names(attr(x, "contrasts"))),
-#                        which(!scale)
-#     )
-#     )
-#     scale <- !attr(x, "assign") %in% remove
-#   }
-#   ret <- svm.default (x, y, scale = scale, ..., na.action = na.action)
-#   ret$call <- call
-#   ret$call[[1]] <- as.name("svm")
-#   ret$terms <- Terms
-#   if (!is.null(attr(m, "na.action")))
-#     ret$na.action <- attr(m, "na.action")
-#   class(ret) <- c("scnn.formula", class(ret))
-#   return (ret)
-# }
-
 
