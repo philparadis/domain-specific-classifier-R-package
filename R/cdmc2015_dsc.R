@@ -5,13 +5,15 @@
 
 source("dsc.R")
 
+library(caTools)
+library(caret)
 
 # Set working directory
-setwd("/proj/cdmc-2015")
+setwd("~/h/proj/cdmc-2015/R")
 
 # Load datasets
-file.train <- "data/task1/EnewsTrain.csv"
-file.test <- "data/task1/EnewsTest.csv"
+file.train <- "~/h/proj/cdmc-2015/data/task1/EnewsTrain.csv"
+file.test <- "~/h/proj/cdmc-2015/data/task1/EnewsTest.csv"
 df.train <- read.csv(file.train,
                      header = FALSE,
                      colClasses = c("character", "integer"),
@@ -57,55 +59,46 @@ trainSparse <- as.data.frame(as.matrix(sparse))
 colnames(trainSparse) <- make.names(colnames(trainSparse))
 
 #split into train and test (70% for training)
-library(caTools)
-split <- sample.split(train$class, SplitRatio=0.95)
-train1.df <- subset(trainSparse, split==TRUE)
-test1.df <- subset(trainSparse, split==FALSE)
-train1.labels <- subset(train$class, split==TRUE)
-test1.labels <- subset(train$class, split==FALSE)
+# split <- sample.split(train$class, SplitRatio=0.95)
+# train1.df <- subset(trainSparse, split==TRUE)
+# test1.df <- subset(trainSparse, split==FALSE)
+# train1.labels <- subset(train$class, split==TRUE)
+# test1.labels <- subset(train$class, split==FALSE)
 
-split <- sample.split(train$class, SplitRatio=0.95)
+split <- sample.split(train$class, SplitRatio=0.7)
 train1 <- trainDTM[split==TRUE, ]
 test1 <- trainDTM[split==FALSE, ]
 train1.labels <- subset(train$class, split==TRUE)
 test1.labels <- subset(train$class, split==FALSE)
 
-# Classification with Domain-Specific Classifier
+###
+### Classification with Domain-Specific Classifier
+###
+model.dsc <- dsc(train1, train1.labels, alpha = 1.0, p = 3)
+pred.dsc <- predict(model.dsc, test1)
+cm <- confusionMatrix(test1.labels, pred.dsc)
+cm$overall[1]
 
-model <- dsc(train1, train1.labels, alpha = 1.0, p = 1.0)
-pred <- predict(model, test1)
+results <- c()
+for (alpha in c(0, 0.25, 0.5, 0.75, 1, 2, 5, 10)) {
+  for (p in c(0.5, 1.0, 1.5, 2.0, 3.0, 5.0, Inf)) {
+    model.dsc <- dsc(train1, train1.labels, alpha = alpha, p = p)
+    pred.dsc <- predict(model.dsc, test1)
+    cm <- confusionMatrix(test1.labels, pred.dsc)
+    cm$overall[1]
+    
+    newres <- c(alpha=alpha, p=p, accuracy=cm$overall[1])
+    results <- rbind(results, newres)
+    print(newres)
+  }
+}
+results
 
-confusionMatrix(test1.labels, pred)
+###
+### Classification with Random Forests
+###
 
 
-# #baseline: predict the most frquent class
-# table(test1$class)
-# 84/nrow(test1)
-# #baseline Acuracy=0.2089552
-# 
-# 
-# #CART to predict
-# #build model on training dataset
-# library(rpart)
-# library(rpart.plot)
-# cart<-rpart(class~.,data=train1,method="class")
-# prp(cart)
-# 
-# #predict on testing dataset
-# predCart<-predict(cart, newdata=test1, type="class")
-# table(test1$class,predCart)
-# #predCart confusion matrix
-# #   1  2  3  4  5
-# #1 41  8 10  6 12
-# #2  4 41 30  0  5
-# #3  5  2 66  0  6
-# #4  7 17  8 43  9
-# #5  5 19 10  4 44
-# (41+41+66+43+44)/nrow(test1)
-# 
-# #randomForest to predict
-# library(randomForest)
-# RF<-randomForest(class ~ .,data=train1)
-# predRF<-predict(RF,newdata=test1)
-# table(test1$class,predRF)
-# (62+77+73+69+75)/nrow(test1)
+###
+### Classification with SVM linear
+###
