@@ -7,6 +7,8 @@ source("dsc.R")
 
 library(caTools)
 library(caret)
+library(randomForest)
+library(e1071)
 
 # Set working directory
 setwd("~/h/proj/cdmc-2015/R")
@@ -44,7 +46,7 @@ inspect(freq[1000:1005,505:515])
 #find most frequent words 
 findFreqTerms(freq, lowfreq=500)
 #remove sparse words (0.99 represent to only keep terms that appear in 1% or more)
-sparse <- removeSparseTerms(freq, 0.99)
+sparse <- removeSparseTerms(freq, 0.995)
 sparse
 # <<DocumentTermMatrix (documents: 1338, terms: 3432)>>
 #   Non-/sparse entries: 200133/4391883
@@ -65,7 +67,8 @@ colnames(trainSparse) <- make.names(colnames(trainSparse))
 # train1.labels <- subset(train$class, split==TRUE)
 # test1.labels <- subset(train$class, split==FALSE)
 
-split <- sample.split(train$class, SplitRatio=0.7)
+set.seed(1)
+split <- sample.split(train$class, SplitRatio=0.6)
 train1 <- trainDTM[split==TRUE, ]
 test1 <- trainDTM[split==FALSE, ]
 train1.labels <- subset(train$class, split==TRUE)
@@ -74,13 +77,13 @@ test1.labels <- subset(train$class, split==FALSE)
 ###
 ### Classification with Domain-Specific Classifier
 ###
-model.dsc <- dsc(train1, train1.labels, alpha = 1.0, p = 3)
+model.dsc <- dsc(train1, train1.labels, alpha = 1.0, p = Inf)
 pred.dsc <- predict(model.dsc, test1)
 cm <- confusionMatrix(test1.labels, pred.dsc)
 cm$overall[1]
 
 results <- c()
-for (alpha in c(0, 0.25, 0.5, 0.75, 1, 2, 5, 10)) {
+for (alpha in c(0, 0.25, 0.5, 0.75, 1, 2, 3, 4, 5)) {
   for (p in c(0.5, 1.0, 1.5, 2.0, 3.0, 5.0, Inf)) {
     model.dsc <- dsc(train1, train1.labels, alpha = alpha, p = p)
     pred.dsc <- predict(model.dsc, test1)
@@ -92,13 +95,30 @@ for (alpha in c(0, 0.25, 0.5, 0.75, 1, 2, 5, 10)) {
     print(newres)
   }
 }
-results
+results <- data.frame(results)
+results[order(results$accuracy, decreasing = TRUE), ]
 
 ###
 ### Classification with Random Forests
 ###
 
+model.rf <- randomForest(as.data.frame(as.matrix(train1)), factor(train1.labels), ntree=50)
+pred.rf <- predict(model.rf, as.data.frame(as.matrix(test1)))
+cm.rf <- confusionMatrix(test1.labels, pred.rf)
+cm.rf$overall[1]
 
 ###
 ### Classification with SVM linear
 ###
+
+model.svm.linear <- svm(as.data.frame(as.matrix(train1)), factor(train1.labels),
+                        kernel = "linear", scale = FALSE)
+pred.svm.linear <- predict(model.svm.linear, as.data.frame(as.matrix(test1)))
+cm.svm.linear <- confusionMatrix(test1.labels, pred.svm.linear)
+cm.svm.linear$overall[1]
+
+model.svm.rb <- svm(as.data.frame(as.matrix(train1)), factor(train1.labels),
+                    kernel = "radial", scale = FALSE)
+pred.svm.rb <- predict(model.svm.rb, as.data.frame(as.matrix(test1)))
+cm.svm.rb <- confusionMatrix(test1.labels, pred.svm.rb)
+cm.svm.rb$overall[1]
