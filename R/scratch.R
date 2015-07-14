@@ -22,6 +22,9 @@ train$text <- lapply(train$text, tolower)
 test <- df.test
 test$text <- lapply(test$text, tolower)
 
+### Play around with Corpus
+corpus <- Corpus(VectorSource(train$text))
+
 # Count frequency of the words in the document
 corpus <- Corpus(VectorSource(train$text))
 freq <- DocumentTermMatrix(corpus)

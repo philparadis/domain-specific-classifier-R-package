@@ -18,7 +18,7 @@ file.train <- "~/h/proj/cdmc-2015/data/task1/EnewsTrain.csv"
 file.test <- "~/h/proj/cdmc-2015/data/task1/EnewsTest.csv"
 df.train <- read.csv(file.train,
                      header = FALSE,
-                     colClasses = c("character", "integer"),
+                     colClasses = c("character", "factor"),
                      col.names = c("text", "class"))
 df.test <- read.csv(file.test, header = FALSE,
                     colClasses = c("character"), col.names=c("text"))
@@ -77,10 +77,36 @@ test1.labels <- subset(train$class, split==FALSE)
 ###
 ### Classification with Domain-Specific Classifier
 ###
-model.dsc <- dsc(train1, train1.labels, alpha = 1.0, p = Inf)
+
+model.dsc <- dsc(train1, train1.labels, alpha = 0.75, p = 1.0)
 pred.dsc <- predict(model.dsc, test1)
 cm <- confusionMatrix(test1.labels, pred.dsc)
 cm$overall[1]
+
+###
+### Classification with Domain-Specific Classifier
+### Do not drop any words from the corpus this time!
+###
+
+# Setup training/testing datasets
+alpha <- 1.0
+p <- Inf
+SplitRatio <- 0.7
+trainDMT <- freq
+
+set.seed(0)
+split <- sample.split(train$class, SplitRatio=SplitRatio)
+train1 <- trainDTM[split==TRUE, ]
+test1 <- trainDTM[split==FALSE, ]
+train1.labels <- subset(train$class, split==TRUE)
+test1.labels <- subset(train$class, split==FALSE)
+
+
+
+###
+### Classification with Domain-Specific Classifier
+### Calculate the best accuracy over a grid of parameters for alpha and p
+###
 
 results <- c()
 for (alpha in c(0, 0.25, 0.5, 0.75, 1, 2, 3, 4, 5)) {
