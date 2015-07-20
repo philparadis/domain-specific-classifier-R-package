@@ -3,6 +3,12 @@
 # Classification experiment for task 1 of CDMC 2015 using the
 # Domain-Specific Classifier.
 
+if (!file.exists("dsc.R")) {
+  stop(paste0("Could not file required source file 'dsc.R'. Make sure that ",
+              "you set the current working directory to the R source file ",
+              "directory of the cdmc-2015 project."))
+}
+
 source("dsc.R")
 
 library(caTools)
@@ -21,7 +27,7 @@ df.train <- read.csv(file.train,
                      colClasses = c("character", "factor"),
                      col.names = c("text", "class"))
 df.test <- read.csv(file.test, header = FALSE,
-                    colClasses = c("character"), col.names=c("text"))
+                    colClasses = c("character"), col.names = c("text"))
 
 # Convert datasets to lower case
 train <- df.train
